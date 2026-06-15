@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Easel | Memory{% endblock %}
+
+{% block content %}
+<div class="page active memory-page" id="page-memory">
+  <div class="memory-sidebar">
+    <div class="memory-header">
+      <span class="settings-page-tag">Memory</span>
+      <h1 class="settings-page-title">Knowledge Base</h1>
+    </div>
+    <div class="memory-filter" id="memory-filter">
+      <button class="memory-filter-btn active" data-filter="all">All</button>
+      <button class="memory-filter-btn" data-filter="topics">Topics</button>
+      <button class="memory-filter-btn" data-filter="projects">Projects</button>
+    </div>
+    <div class="memory-list" id="memory-list"></div>
+  </div>
+
+  <main class="memory-main">
+    <section class="memory-note">
+      <div class="memory-note-title" id="memory-note-title">Select a note</div>
+      <div class="memory-note-content" id="memory-note-content">No wiki memory has been created yet.</div>
+    </section>
+  </main>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', path='memory.js') }}"></script>
+{% endblock %}

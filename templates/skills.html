@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Easel | Skills{% endblock %}
+
+{% block content %}
+<div class="page active" id="page-skills">
+  <div class="skills-layout" id="skills-list-view">
+    <div class="skills-page-header">
+      <div class="skills-page-title-group">
+        <span class="skills-page-tag">Skills</span>
+        <h1 class="skills-page-title">Tool Registry</h1>
+      </div>
+    </div>
+    <div class="skills-search-wrap">
+      <span class="skills-search-icon">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M8.5 8.5L12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"/>
+        </svg>
+      </span>
+      <input type="text" id="skills-search" class="skills-search" placeholder="Search skills…" />
+    </div>
+    <div class="skills-list" id="skills-list"></div>
+  </div>
+
+  <div class="skills-detail-view" id="skills-detail-view">
+    <div class="skills-detail-topbar">
+      <button class="skills-back-btn" id="skills-back-btn">← Back</button>
+      <span class="skills-detail-topbar-title" id="skills-detail-title"></span>
+      <div class="skills-detail-toggle-wrap" id="skills-detail-toggle-wrap"></div>
+    </div>
+    <div class="skills-detail-body">
+      <div class="skills-detail-main md-content" id="skills-detail-main"></div>
+      <aside class="skills-detail-sidebar" id="skills-detail-sidebar"></aside>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', path='skills.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Easel | Routines{% endblock %}
+
+{% block content %}
+<div class="page active" id="page-routines">
+  <div class="routines-layout">
+    <div class="routines-page-header">
+      <div class="routines-page-title-group">
+        <span class="routines-page-tag">Routines</span>
+        <h1 class="routines-page-title">Automated Workflows</h1>
+      </div>
+      <div class="routines-header-actions">
+        <button class="btn-edit-routines" id="btn-edit-routines">Edit Routines</button>
+        <button class="btn-new-routine">+ New Routine</button>
+      </div>
+    </div>
+    <div class="routines-search-wrap">
+      <span class="routines-search-icon">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M8.5 8.5L12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"/>
+        </svg>
+      </span>
+      <input type="text" id="routines-search" class="routines-search" placeholder="Search routines…" />
+    </div>
+    <div class="routines-grid" id="routines-grid"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', path='new-routine-modal.js') }}"></script>
+<script src="{{ url_for('static', path='routines.js') }}"></script>
+{% endblock %}
