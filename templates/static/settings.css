@@ -164,7 +164,7 @@
 }
 
 .btn-add-api:hover { background: var(--accent-hover); }
-.btn-add-api:active { transform: translate(2px, 2px); box-shadow: none; }
+.btn-add-api:active { transform: translateY(1px); }
 
 /* Model input */
 .settings-field { display: flex; flex-direction: column; gap: 7px; }
@@ -194,7 +194,7 @@
 }
 
 .settings-input::placeholder { color: var(--text-xsoft); }
-.settings-input:focus { border-color: var(--accent); box-shadow: var(--shadow-accent); }
+.settings-input:focus { border-color: var(--accent); box-shadow: var(--ring); }
 
 .btn-settings-save {
   font-family: var(--font-ui);
@@ -292,7 +292,7 @@
 .api-modal {
   background: var(--nav-bg);
   border: 1px solid var(--shell-border);
-  box-shadow: 6px 6px 0 oklch(6% 0.04 55);
+  box-shadow: var(--shadow-dark);
   padding: 28px 32px 32px;
   width: 420px;
   display: flex;
@@ -410,5 +410,5 @@
 }
 
 .btn-api-save:hover { background: var(--accent-hover); }
-.btn-api-save:active { transform: translate(2px, 2px); box-shadow: none; }
+.btn-api-save:active { transform: translateY(1px); box-shadow: none; }
 .btn-api-save:disabled { opacity: 0.4; pointer-events: none; }

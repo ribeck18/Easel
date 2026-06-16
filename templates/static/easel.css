@@ -1,39 +1,66 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
---nav-bg:            oklch(20% 0.09 240);
---sidebar-bg:        oklch(26% 0.09 240);
---sidebar-hover:     oklch(31% 0.09 240);
---sidebar-active:    oklch(35% 0.09 240);
---bg:                oklch(96.5% 0.013 82);
---surface:           oklch(99.5% 0.009 82);
---surface-2:         oklch(94.5% 0.017 80);
---border:            oklch(88.5% 0.016 76);
---border-2:          oklch(81% 0.020 72);
---text:              oklch(16% 0.020 55);
---text-soft:         oklch(44% 0.016 65);
---text-xsoft:        oklch(62% 0.014 70);
---sidebar-text:      oklch(87% 0.013 76);
---sidebar-text-soft: oklch(58% 0.015 70);
---accent:            oklch(58% 0.158 46);
---accent-hover:      oklch(53% 0.158 46);
---accent-fg:         oklch(98% 0.010 82);
---user-msg:          oklch(93.5% 0.036 80);
+/* ============================================================
+   Direction C — "Dusk": espresso chrome, candlelit oat body,
+   amber-gold accent. CSS-only reskin; markup & behavior untouched.
+   ============================================================ */
 
---shadow-card:   3px 3px 0 oklch(84% 0.018 74);
---shadow-dark:   3px 3px 0 oklch(9% 0.018 55);
---shadow-accent: 4px 4px 0 oklch(46% 0.158 46);
+/* Espresso chrome (nav + sidebar + modals) */
+--nav-bg:            oklch(25% 0.035 48);
+--sidebar-bg:        oklch(28% 0.036 48);
+--sidebar-hover:     oklch(33% 0.040 48);
+--sidebar-active:    oklch(37% 0.042 50);
 
-/* Shell theme tokens — overwritten by tweaks */
---shell-border:       oklch(28% 0.09 240);
---shell-input:        oklch(17% 0.09 240);
---shell-input-border: oklch(33% 0.09 240);
---shell-shadow:       2px 2px 0 oklch(12% 0.09 240);
---shell-shadow-sm:    1px 1px 0 oklch(12% 0.09 240);
---shell-pill-bg:      oklch(17% 0.09 240);
---shell-pill-border:  oklch(28% 0.09 240);
---shell-scroll:       oklch(33% 0.09 240);
---accent-border:      oklch(48% 0.158 46);
+/* Warm oat workspace */
+--bg:                oklch(93.5% 0.020 78);
+--surface:           oklch(96.5% 0.015 80);
+--surface-2:         oklch(91% 0.024 75);
+--border:            oklch(87.5% 0.020 73);
+--border-2:          oklch(80% 0.026 68);
+--text:              oklch(27% 0.026 48);
+--text-soft:         oklch(46% 0.022 52);
+--text-xsoft:        oklch(62% 0.018 58);
+--sidebar-text:      oklch(90% 0.018 76);
+--sidebar-text-soft: oklch(64% 0.024 64);
+
+/* Amber gold accent */
+--accent:            oklch(70% 0.13 72);
+--accent-hover:      oklch(65% 0.13 72);
+--accent-fg:         oklch(24% 0.040 60);
+--user-msg:          oklch(91% 0.038 70);
+
+/* Soft, diffused elevation (replaces hard offset shadows) */
+--shadow-color:  oklch(30% 0.040 48);
+--shadow-card:   0 1px 2px color-mix(in oklab, var(--shadow-color) 7%, transparent),
+                 0 6px 16px color-mix(in oklab, var(--shadow-color) 9%, transparent);
+--shadow-lift:   0 3px 8px color-mix(in oklab, var(--shadow-color) 10%, transparent),
+                 0 16px 32px color-mix(in oklab, var(--shadow-color) 13%, transparent);
+--shadow-dark:   0 2px 6px color-mix(in oklab, var(--shadow-color) 22%, transparent),
+                 0 12px 28px color-mix(in oklab, var(--shadow-color) 18%, transparent);
+--shadow-accent: 0 4px 14px color-mix(in oklab, var(--accent) 30%, transparent);
+
+/* Soft corner radii */
+--r-card:  14px;
+--r-btn:   10px;
+--r-input: 12px;
+--r-chip:  9px;
+--r-pill:  999px;
+
+/* Focus ring */
+--ring: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+
+/* Shell theme tokens — espresso chrome variants */
+--shell-border:       oklch(33% 0.040 48);
+--shell-input:        oklch(21% 0.030 46);
+--shell-input-border: oklch(36% 0.040 48);
+--shell-shadow:       0 1px 2px color-mix(in oklab, var(--shadow-color) 18%, transparent),
+                      0 4px 12px color-mix(in oklab, var(--shadow-color) 22%, transparent);
+--shell-shadow-sm:    0 1px 3px color-mix(in oklab, var(--shadow-color) 18%, transparent);
+--shell-pill-bg:      oklch(21% 0.030 46);
+--shell-pill-border:  oklch(34% 0.040 48);
+--shell-scroll:       oklch(48% 0.030 56);
+--accent-border:      oklch(60% 0.13 72);
 
 --font-ui:   'Space Grotesk', system-ui, sans-serif;
 --font-body: 'DM Sans', system-ui, sans-serif;
@@ -54,8 +81,8 @@
 --nrm-accent-fg:    var(--accent-fg);
 --nrm-warn:         oklch(68% 0.15 40);
 --nrm-error:        oklch(64% 0.17 28);
---nrm-shadow:       6px 6px 0 oklch(6% 0.04 55);
---nrm-shadow-btn:   2px 2px 0 oklch(8% 0.04 55);
+--nrm-shadow:       var(--shadow-dark);
+--nrm-shadow-btn:   var(--shell-shadow-sm);
 --nrm-font-ui:      var(--font-ui);
 --nrm-font-body:    var(--font-body);
 --nrm-font-mono:    var(--font-mono);
@@ -424,7 +451,7 @@ transition: border-color 0.15s;
 }
 
 .sidebar-search-input::placeholder { color: oklch(38% 0.014 66); }
-.sidebar-search-input:focus { border-color: var(--accent); }
+.sidebar-search-input:focus { border-color: var(--accent); box-shadow: var(--ring); }
 
 .sidebar-list {
 flex: 1;
@@ -560,10 +587,10 @@ transition: color 0.15s, border-color 0.15s, box-shadow 0.08s, transform 0.08s;
 .icon-btn:hover {
 color: var(--text);
 border-color: var(--border-2);
-box-shadow: 2px 2px 0 oklch(84% 0.018 74);
+box-shadow: var(--shadow-card);
 }
 
-.icon-btn:active { transform: translate(1px, 1px); box-shadow: none; }
+.icon-btn:active { transform: translateY(1px); }
 
 /* ── Messages ─────────────────────────────────────────── */
 
@@ -824,8 +851,8 @@ border: none;
 box-shadow: var(--shadow-accent);
 }
 
-.btn-approve:hover { background: var(--accent-hover); }
-.btn-approve:active { transform: translate(2px, 2px); box-shadow: none; }
+.btn-approve:hover { background: var(--accent-hover); box-shadow: var(--shadow-lift); }
+.btn-approve:active { transform: translateY(1px); }
 
 .btn-reject {
 color: var(--text-soft);
@@ -902,7 +929,7 @@ transition: border-color 0.15s, box-shadow 0.15s;
 
 .input-bar:focus-within {
 border-color: var(--accent);
-box-shadow: var(--shadow-accent);
+box-shadow: var(--ring);
 }
 
 .attach-btn {
@@ -1091,8 +1118,7 @@ transition: background 0.12s, transform 0.08s, box-shadow 0.08s;
 .btn-new-routine:hover { background: var(--accent-hover); }
 
 .btn-new-routine:active {
-transform: translate(2px, 2px);
-box-shadow: none;
+transform: translateY(1px);
 }
 
 .routines-header-actions {
@@ -1119,8 +1145,7 @@ transition: border-color 0.12s, color 0.12s, transform 0.08s, box-shadow 0.08s;
 .btn-edit-routines:hover { border-color: var(--text-soft); }
 
 .btn-edit-routines:active {
-transform: translate(2px, 2px);
-box-shadow: none;
+transform: translateY(1px);
 }
 
 .btn-edit-routines.editing {
@@ -1163,7 +1188,7 @@ transition: border-color 0.15s, box-shadow 0.15s;
 
 .routines-search:focus {
 border-color: var(--accent);
-box-shadow: var(--shadow-accent);
+box-shadow: var(--ring);
 }
 
 /* Grid */
@@ -1316,7 +1341,7 @@ pointer-events: all;
 .routine-modal {
 background: var(--nav-bg);
 border: 1px solid var(--shell-border);
-box-shadow: 6px 6px 0 oklch(6% 0.04 55);
+box-shadow: var(--shadow-dark);
 padding: 28px 32px;
 width: 400px;
 display: flex;
@@ -1425,7 +1450,7 @@ cursor: pointer;
 letter-spacing: 0.07em;
 text-transform: uppercase;
 align-self: flex-start;
-box-shadow: 2px 2px 0 oklch(8% 0.04 55);
+box-shadow: var(--shell-shadow-sm);
 transition: background 0.12s, border-color 0.12s, transform 0.08s, box-shadow 0.08s;
 }
 
@@ -1435,8 +1460,7 @@ border-color: oklch(42% 0.09 240);
 }
 
 .btn-dismiss:active {
-transform: translate(1px, 1px);
-box-shadow: none;
+transform: translateY(1px);
 }
 
 /* ── Skills Page ─────────────────────────────────────── */
@@ -1511,7 +1535,7 @@ transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .skills-search::placeholder { color: var(--text-xsoft); }
-.skills-search:focus { border-color: var(--accent); box-shadow: var(--shadow-accent); }
+.skills-search:focus { border-color: var(--accent); box-shadow: var(--ring); }
 
 .skills-list {
 display: flex;
@@ -1531,11 +1555,11 @@ transition: border-color 0.12s, box-shadow 0.12s, transform 0.1s;
 
 .skill-card:hover {
 border-color: var(--accent);
-box-shadow: var(--shadow-accent);
-transform: translate(-1px, -1px);
+box-shadow: var(--shadow-lift);
+transform: translateY(-2px);
 }
 
-.skill-card:active { transform: translate(1px, 1px); box-shadow: none; }
+.skill-card:active { transform: translateY(0); box-shadow: var(--shadow-card); }
 
 .skill-card-top {
 display: flex;
@@ -1659,7 +1683,7 @@ flex-shrink: 0;
 }
 
 .skills-back-btn:hover { color: var(--text); border-color: var(--border-2); }
-.skills-back-btn:active { transform: translate(1px, 1px); box-shadow: none; }
+.skills-back-btn:active { transform: translateY(1px); }
 
 .skills-detail-topbar-title {
 font-family: var(--font-ui);
@@ -2272,3 +2296,110 @@ scrollbar-color: var(--border-2) transparent;
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* ============================================================
+   Direction C — "Dusk" soft-corner pass
+   Pure-CSS rounding of the existing sharp-cornered components.
+   Grouped by element type; values come from the --r-* tokens.
+   ============================================================ */
+
+/* Cards & containers */
+.tool-block,
+.approval-card,
+.routine-card,
+.skill-card,
+.memory-list-item,
+.memory-note-content,
+.memory-empty,
+.stub-icon-box,
+.skill-ref-item,
+.nrm-preview { border-radius: var(--r-card); }
+
+.tool-pre,
+.md-content pre,
+.msg-bubble pre,
+.memory-note-content pre,
+.msg-bubble code,
+.memory-note-content code,
+.md-content code { border-radius: var(--r-chip); }
+
+/* Message bubbles + their tail corner */
+.msg-bubble { border-radius: var(--r-card); }
+.message.user .msg-bubble { border-bottom-right-radius: 5px; }
+.message.assistant .msg-bubble { border-bottom-left-radius: 5px; }
+
+/* Buttons */
+.btn-new,
+.btn-approve,
+.btn-approve-always,
+.btn-reject,
+.btn-new-routine,
+.btn-edit-routines,
+.btn-add-api,
+.btn-settings-save,
+.btn-dismiss,
+.btn-api-save,
+.send-btn,
+.icon-btn,
+.routine-card-edit,
+.routine-card-delete,
+.skills-back-btn,
+.stub-cta,
+.memory-filter-btn,
+.nrm-create,
+.nrm-cancel,
+.routine-modal-x,
+.api-modal-x,
+.nrm-close { border-radius: var(--r-btn); }
+
+/* Inputs & fields */
+.sidebar-search-input,
+.routines-search,
+.skills-search,
+.settings-input,
+.settings-textarea,
+.api-modal-input,
+.nrm-input,
+.nrm-textarea,
+.nrm-select { border-radius: var(--r-input); }
+
+/* Composite bars — round the wrapper and clip the flush bordered children */
+.input-bar { border-radius: var(--r-card); overflow: hidden; }
+.api-key-row { border-radius: var(--r-card); overflow: hidden; }
+.nrm-seg { border-radius: var(--r-input); overflow: hidden; }
+.settings-field-row .settings-input { border-radius: var(--r-input) 0 0 var(--r-input); }
+.settings-field-row .btn-settings-save { border-radius: 0 var(--r-input) var(--r-input) 0; }
+.api-modal-value-row .api-modal-input { border-radius: var(--r-input) 0 0 var(--r-input); }
+.api-modal-value-row .api-modal-reveal-btn { border-radius: 0 var(--r-input) var(--r-input) 0; }
+
+/* Pills, chips & tags */
+.nav-pill,
+.tool-status,
+.skill-used-chip { border-radius: var(--r-pill); }
+
+.skill-cat,
+.msg-tag,
+.attachment-chip,
+.stub-tag,
+.routines-page-tag,
+.skills-page-tag,
+.settings-page-tag,
+.skill-ref-ext,
+.routine-card-icon { border-radius: var(--r-chip); }
+
+/* Round/soft small indicators & toggles */
+.status-dot,
+.modal-pulse-dot,
+.typing-dot,
+.routine-modal-dot { border-radius: 50%; }
+
+.skill-toggle-track,
+.tools-toggle-track { border-radius: var(--r-pill); }
+.skill-toggle-track::after,
+.tools-toggle-thumb { border-radius: 50%; }
+
+/* Modals & toast */
+.routine-modal,
+.nrm-modal,
+.api-modal { border-radius: var(--r-card); overflow: hidden; }
+.memory-toast { border-radius: var(--r-btn); }
