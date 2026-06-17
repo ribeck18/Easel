@@ -1,12 +1,229 @@
 (function () {
-  var STORAGE_MODEL = 'easel_model';
-
-  function loadModel() { return localStorage.getItem(STORAGE_MODEL) || 'mock-1'; }
-  function saveModel(m){ localStorage.setItem(STORAGE_MODEL, m); }
-
-  var keys = [];
-
   function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  /* ── Providers ──────────────────────────────────────── */
+  var providers = [];
+  var activeProviderId = null;
+
+  function fetchProviders() {
+    fetch('/api/providers')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        providers = data.providers || [];
+        activeProviderId = data.active_id || null;
+        renderProviders();
+        syncNavPill();
+      })
+      .catch(function() { providers = []; activeProviderId = null; renderProviders(); });
+  }
+
+  function activeProvider() {
+    for (var i = 0; i < providers.length; i++) {
+      if (providers[i].id === activeProviderId) return providers[i];
+    }
+    return null;
+  }
+
+  function syncNavPill() {
+    var active = activeProvider();
+    var pill = document.querySelector('.nav-pill');
+    if (!pill) return;
+    pill.innerHTML = '<span class="status-dot"></span>'
+      + (active ? escH(active.model) + ' · ready' : 'No provider');
+  }
+
+  function renderProviders() {
+    var list = document.getElementById('providers-list');
+    if (!list) return;
+    if (!providers.length) {
+      list.innerHTML = '<div class="api-key-empty">No providers configured. Add one to connect a model.</div>';
+      return;
+    }
+    list.innerHTML = providers.map(function(p) {
+      var checked = p.id === activeProviderId ? ' checked' : '';
+      return '<div class="api-key-row provider-row">'
+        + '<input type="radio" name="active-provider" class="provider-radio" value="' + escH(p.id) + '"' + checked + ' />'
+        + '<div class="api-key-name">' + escH(p.label) + '</div>'
+        + '<div class="api-key-value">' + escH(p.model) + '</div>'
+        + '<div class="provider-actions">'
+        +   '<button type="button" class="provider-action-btn" data-act="edit" data-id="' + escH(p.id) + '">Edit</button>'
+        +   '<button type="button" class="provider-action-btn provider-action-del" data-act="delete" data-id="' + escH(p.id) + '">Delete</button>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+    Array.prototype.forEach.call(list.querySelectorAll('.provider-radio'), function(radio) {
+      radio.addEventListener('change', function() {
+        if (radio.checked) setActiveProvider(radio.value);
+      });
+    });
+    Array.prototype.forEach.call(list.querySelectorAll('.provider-action-btn'), function(btn) {
+      btn.addEventListener('click', function() {
+        var id = btn.getAttribute('data-id');
+        if (btn.getAttribute('data-act') === 'edit') openEditModal(id);
+        else deleteProvider(id);
+      });
+    });
+  }
+
+  function deleteProvider(id) {
+    var p = null;
+    for (var i = 0; i < providers.length; i++) { if (providers[i].id === id) p = providers[i]; }
+    var name = p ? p.label : 'this provider';
+    if (!window.confirm('Delete "' + name + '"? This cannot be undone.')) return;
+    fetch('/api/providers/' + encodeURIComponent(id), { method: 'DELETE' })
+      .then(function() { fetchProviders(); });
+  }
+
+  function setActiveProvider(id) {
+    fetch('/api/providers/active', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id }),
+    }).then(function(r) {
+      if (!r.ok) throw new Error('switch failed');
+      return r.json();
+    }).then(function(data) {
+      activeProviderId = data.active_id;
+      updateNavPill(data.model);
+    }).catch(function() {
+      // Roll the selection back to whatever is actually active on the server.
+      fetchProviders();
+    });
+  }
+
+  function updateNavPill(model) {
+    var pill = document.querySelector('.nav-pill');
+    if (pill) pill.innerHTML = '<span class="status-dot"></span>' + escH(model) + ' · ready';
+  }
+
+  var provOverlay   = document.getElementById('provider-modal-overlay');
+  var provOpenBtn   = document.getElementById('btn-add-provider');
+  var provCloseBtn  = document.getElementById('provider-modal-x');
+  var provPreset    = document.getElementById('provider-preset');
+  var provPresetFld = document.getElementById('provider-preset-field');
+  var provLabel     = document.getElementById('provider-label');
+  var provBaseUrl   = document.getElementById('provider-base-url');
+  var provModel     = document.getElementById('provider-model');
+  var provKey       = document.getElementById('provider-key');
+  var provKeyField  = document.getElementById('provider-key-field');
+  var provRevealBtn = document.getElementById('provider-reveal-btn');
+  var provSaveBtn   = document.getElementById('provider-save-btn');
+  var provTitle     = provOverlay ? provOverlay.querySelector('.api-modal-title') : null;
+  var provRevealed  = false;
+  var labelTouched  = false;
+  var editingId     = null;  // null = add mode; an id = editing that Provider
+
+  // Presets seed the form. "Custom" (empty base_url, key shown) is always last.
+  var CUSTOM_PRESET = { key: 'custom', label: 'Custom', base_url: '', requires_key: true };
+  var presets = [CUSTOM_PRESET];
+
+  function fetchPresets() {
+    fetch('/api/providers/presets')
+      .then(function(r) { return r.json(); })
+      .then(function(list) {
+        presets = (list || []).concat([CUSTOM_PRESET]);
+        if (!provPreset) return;
+        provPreset.innerHTML = presets.map(function(p) {
+          return '<option value="' + escH(p.key) + '">' + escH(p.label) + '</option>';
+        }).join('');
+      })
+      .catch(function() {});
+  }
+
+  function currentPreset() {
+    var key = provPreset ? provPreset.value : 'custom';
+    for (var i = 0; i < presets.length; i++) { if (presets[i].key === key) return presets[i]; }
+    return CUSTOM_PRESET;
+  }
+
+  function applyPreset() {
+    var p = currentPreset();
+    if (provBaseUrl) provBaseUrl.value = p.base_url || '';
+    // Auto-fill the label from the preset until the user types their own.
+    if (provLabel && !labelTouched) provLabel.value = p.key === 'custom' ? '' : p.label;
+    if (provKeyField) provKeyField.style.display = p.requires_key ? '' : 'none';
+    if (!p.requires_key && provKey) provKey.value = '';
+  }
+
+  if (provPreset) provPreset.addEventListener('change', applyPreset);
+  if (provLabel)  provLabel.addEventListener('input', function() { labelTouched = true; });
+
+  function resetKeyField() {
+    if (provKey) { provKey.value = ''; provKey.type = 'password'; }
+    provRevealed = false;
+    if (provRevealBtn) provRevealBtn.innerHTML = eyeSVG(false);
+  }
+
+  function openProviderModal() {
+    if (!provOverlay) return;
+    editingId = null;
+    if (provTitle) provTitle.textContent = 'Add Provider';
+    if (provSaveBtn) provSaveBtn.textContent = 'Save Provider';
+    if (provPresetFld) provPresetFld.style.display = '';
+    if (provKey) provKey.placeholder = 'Leave blank if none (e.g. Ollama)';
+    provOverlay.classList.add('visible');
+    labelTouched = false;
+    if (provPreset && provPreset.options.length) provPreset.selectedIndex = 0;
+    if (provLabel)   provLabel.value = '';
+    if (provModel)   provModel.value = '';
+    resetKeyField();
+    applyPreset();
+    setTimeout(function() { if (provLabel) provLabel.focus(); }, 60);
+  }
+
+  function openEditModal(id) {
+    if (!provOverlay) return;
+    var p = null;
+    for (var i = 0; i < providers.length; i++) { if (providers[i].id === id) p = providers[i]; }
+    if (!p) return;
+    editingId = id;
+    if (provTitle) provTitle.textContent = 'Edit Provider';
+    if (provSaveBtn) provSaveBtn.textContent = 'Save Changes';
+    if (provPresetFld) provPresetFld.style.display = 'none';  // presets only seed new ones
+    if (provKeyField) provKeyField.style.display = '';        // always allow setting a key
+    if (provLabel)   provLabel.value = p.label;
+    if (provBaseUrl) provBaseUrl.value = p.base_url;
+    if (provModel)   provModel.value = p.model;
+    resetKeyField();
+    if (provKey) provKey.placeholder = p.has_key ? 'Leave blank to keep current key' : 'Add a key (optional)';
+    provOverlay.classList.add('visible');
+    setTimeout(function() { if (provLabel) provLabel.focus(); }, 60);
+  }
+
+  function closeProviderModal() { if (provOverlay) provOverlay.classList.remove('visible'); }
+
+  if (provOpenBtn)  provOpenBtn.addEventListener('click', openProviderModal);
+  if (provCloseBtn) provCloseBtn.addEventListener('click', closeProviderModal);
+  if (provOverlay)  provOverlay.addEventListener('click', function(e) { if (e.target === provOverlay) closeProviderModal(); });
+
+  if (provRevealBtn) {
+    provRevealBtn.addEventListener('click', function() {
+      provRevealed = !provRevealed;
+      provKey.type = provRevealed ? 'text' : 'password';
+      provRevealBtn.innerHTML = eyeSVG(provRevealed);
+    });
+  }
+
+  if (provSaveBtn) {
+    provSaveBtn.addEventListener('click', function() {
+      var label   = provLabel ? provLabel.value.trim() : '';
+      var baseUrl = provBaseUrl ? provBaseUrl.value.trim() : '';
+      var model   = provModel ? provModel.value.trim() : '';
+      var key     = provKey ? provKey.value.trim() : '';
+      if (!label || !baseUrl || !model) return;
+      var url = editingId ? '/api/providers/' + encodeURIComponent(editingId) : '/api/providers';
+      fetch(url, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: label, base_url: baseUrl, model: model, api_key: key || null }),
+      }).then(function() { fetchProviders(); });
+      closeProviderModal();
+    });
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && provOverlay && provOverlay.classList.contains('visible')) closeProviderModal();
+  });
 
   function eyeSVG(slashed) {
     var line = slashed ? '<path d="M2 2l10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"/>' : '';
@@ -16,109 +233,6 @@
       + line
       + '</svg>';
   }
-
-  function fetchKeys() {
-    fetch('/api/keys')
-      .then(function(r) { return r.json(); })
-      .then(function(names) { keys = names; renderKeys(); })
-      .catch(function() { keys = []; renderKeys(); });
-  }
-
-  function renderKeys() {
-    var list = document.getElementById('api-keys-list');
-    if (!list) return;
-    if (!keys.length) {
-      list.innerHTML = '<div class="api-key-empty">No API keys configured. Add one to connect a provider.</div>';
-      return;
-    }
-    list.innerHTML = keys.map(function(name) {
-      return '<div class="api-key-row">'
-        + '<div class="api-key-name">' + escH(name) + '</div>'
-        + '<div class="api-key-value">••••••••••••••••</div>'
-        + '</div>';
-    }).join('');
-  }
-
-  /* ── Model ──────────────────────────────────────────── */
-  var modelInput   = document.getElementById('model-input');
-  var modelSaveBtn = document.getElementById('model-save-btn');
-  var modelHint    = document.getElementById('model-hint');
-
-  if (modelInput) {
-    modelInput.value = loadModel();
-
-    modelSaveBtn.addEventListener('click', function() {
-      var val = modelInput.value.trim();
-      if (!val) return;
-      saveModel(val);
-      fetch('/api/setmodel?' + new URLSearchParams({ model: val }), { method: 'POST' });
-      var pill = document.querySelector('.nav-pill');
-      if (pill) pill.innerHTML = '<span class="status-dot"></span>' + escH(val) + ' · ready';
-      modelSaveBtn.textContent = 'Saved';
-      modelSaveBtn.classList.add('saved');
-      modelHint.textContent = 'Saved. Active on next conversation.';
-      setTimeout(function() {
-        modelSaveBtn.textContent = 'Save';
-        modelSaveBtn.classList.remove('saved');
-        modelHint.textContent = 'Used for all new conversations and eval runs.';
-      }, 2200);
-    });
-
-    modelInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') modelSaveBtn.click();
-    });
-  }
-
-  /* ── Modal ──────────────────────────────────────────── */
-  var overlay      = document.getElementById('api-modal-overlay');
-  var openBtn      = document.getElementById('btn-add-api');
-  var closeBtn     = document.getElementById('api-modal-x');
-  var modalName    = document.getElementById('modal-key-name');
-  var modalValue   = document.getElementById('modal-key-value');
-  var revealBtn    = document.getElementById('modal-reveal-btn');
-  var apiSaveBtn   = document.getElementById('api-save-btn');
-  var valRevealed  = false;
-
-  function openModal() {
-    overlay.classList.add('visible');
-    if (modalName)  { modalName.value  = ''; }
-    if (modalValue) { modalValue.value = ''; modalValue.type = 'password'; }
-    valRevealed = false;
-    revealBtn.innerHTML = eyeSVG(false);
-    setTimeout(function() { if (modalName) modalName.focus(); }, 60);
-  }
-
-  function closeModal() { overlay.classList.remove('visible'); }
-
-  if (openBtn)  openBtn.addEventListener('click', openModal);
-  if (closeBtn) closeBtn.addEventListener('click', closeModal);
-  if (overlay)  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && overlay.classList.contains('visible')) closeModal();
-  });
-
-  if (revealBtn) {
-    revealBtn.addEventListener('click', function() {
-      valRevealed = !valRevealed;
-      modalValue.type = valRevealed ? 'text' : 'password';
-      revealBtn.innerHTML = eyeSVG(valRevealed);
-    });
-  }
-
-  if (apiSaveBtn) {
-    apiSaveBtn.addEventListener('click', function() {
-      var name = modalName ? modalName.value.trim().toUpperCase().replace(/\s+/g, '_') : '';
-      var val  = modalValue ? modalValue.value.trim() : '';
-      if (!name || !val) return;
-      fetch('/api/setkey?' + new URLSearchParams({ key_name: name, key: val }), { method: 'POST' })
-        .then(function() { fetchKeys(); });
-      closeModal();
-    });
-  }
-
-  if (modalName)  modalName.addEventListener('keydown',  function(e) { if (e.key === 'Enter') { e.preventDefault(); if (modalValue) modalValue.focus(); } });
-  if (modalValue) modalValue.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); if (apiSaveBtn) apiSaveBtn.click(); } });
 
   /* ── Tools toggle ───────────────────────────────────── */
   var toolsToggle = document.getElementById('tools-toggle-input');
@@ -280,5 +394,6 @@
   }
 
   /* init */
-  fetchKeys();
+  fetchPresets();
+  fetchProviders();
 })();

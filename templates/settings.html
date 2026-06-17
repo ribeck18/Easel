@@ -18,30 +18,16 @@
 
     <section class="settings-section">
       <div class="settings-section-header">
-        <span class="settings-section-label">API Keys</span>
-        <button class="btn-add-api" id="btn-add-api">
+        <span class="settings-section-label">Providers</span>
+        <button class="btn-add-api" id="btn-add-provider">
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
             <path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
           </svg>
-          Add Key
+          Add Provider
         </button>
       </div>
-      <span class="settings-section-desc">Provider credentials used to authenticate model requests.</span>
-      <div class="api-keys-list" id="api-keys-list"></div>
-    </section>
-
-    <section class="settings-section">
-      <div class="settings-section-header">
-        <span class="settings-section-label">Model</span>
-      </div>
-      <div class="settings-field">
-        <span class="settings-field-label">Active Model</span>
-        <div class="settings-field-row">
-          <input type="text" class="settings-input" id="model-input" placeholder="e.g. claude-sonnet-4-6" />
-          <button class="btn-settings-save" id="model-save-btn">Save</button>
-        </div>
-        <span class="settings-field-hint" id="model-hint">Used for all new conversations and eval runs.</span>
-      </div>
+      <span class="settings-section-desc">OpenAI-compatible endpoints Easel can talk to. The active Provider is used for all requests.</span>
+      <div class="api-keys-list" id="providers-list"></div>
     </section>
 
     <section class="settings-section">
@@ -110,21 +96,33 @@
     </section>
   </div>
 
-  <div class="api-modal-overlay" id="api-modal-overlay">
+  <div class="api-modal-overlay" id="provider-modal-overlay">
     <div class="api-modal">
       <div class="api-modal-header">
-        <span class="api-modal-title">Add API Key</span>
-        <button class="api-modal-x" id="api-modal-x">✕</button>
+        <span class="api-modal-title">Add Provider</span>
+        <button class="api-modal-x" id="provider-modal-x">✕</button>
+      </div>
+      <div class="api-modal-field" id="provider-preset-field">
+        <span class="api-modal-label">Provider type</span>
+        <select class="api-modal-input" id="provider-preset"></select>
       </div>
       <div class="api-modal-field">
-        <span class="api-modal-label">Name</span>
-        <input type="text" class="api-modal-input" id="modal-key-name" placeholder="e.g. ANTHROPIC_API_KEY" />
+        <span class="api-modal-label">Label</span>
+        <input type="text" class="api-modal-input" id="provider-label" placeholder="e.g. My OpenRouter" />
       </div>
       <div class="api-modal-field">
-        <span class="api-modal-label">Key</span>
+        <span class="api-modal-label">Base URL</span>
+        <input type="text" class="api-modal-input" id="provider-base-url" placeholder="https://openrouter.ai/api/v1" />
+      </div>
+      <div class="api-modal-field">
+        <span class="api-modal-label">Model</span>
+        <input type="text" class="api-modal-input" id="provider-model" placeholder="e.g. openai/gpt-4o" />
+      </div>
+      <div class="api-modal-field" id="provider-key-field">
+        <span class="api-modal-label">API Key</span>
         <div class="api-modal-value-row">
-          <input type="password" class="api-modal-input" id="modal-key-value" placeholder="sk-..." />
-          <button class="api-modal-reveal-btn" id="modal-reveal-btn">
+          <input type="password" class="api-modal-input" id="provider-key" placeholder="Leave blank if none (e.g. Ollama)" />
+          <button class="api-modal-reveal-btn" id="provider-reveal-btn">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
               <path d="M1 6.5C1 6.5 3.5 1.5 6.5 1.5s5.5 5 5.5 5-2.5 5-5.5 5S1 6.5 1 6.5z" stroke="currentColor" stroke-width="1.2"/>
               <circle cx="6.5" cy="6.5" r="1.75" fill="currentColor"/>
@@ -134,10 +132,11 @@
       </div>
       <div class="api-modal-footer">
         <span class="api-modal-hint">Stored locally on this computer.</span>
-        <button class="btn-api-save" id="api-save-btn">Save Key</button>
+        <button class="btn-api-save" id="provider-save-btn">Save Provider</button>
       </div>
     </div>
   </div>
+
 </div>
 {% endblock %}
 

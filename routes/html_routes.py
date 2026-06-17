@@ -4,16 +4,23 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from providers import ProviderStore
+
 
 route = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 
 
 def render_page(request: Request, template_name: str, title: str, active_page: str) -> HTMLResponse:
+    active = ProviderStore.get_active()
     return templates.TemplateResponse(
         request=request,
         name=template_name,
-        context={"title": title, "active_page": active_page},
+        context={
+            "title": title,
+            "active_page": active_page,
+            "active_model": active["model"] if active else None,
+        },
     )
 
 
