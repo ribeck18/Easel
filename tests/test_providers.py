@@ -9,6 +9,8 @@ from dotenv import dotenv_values
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import providers as providers_mod  # noqa: E402
+import config as config_mod  # noqa: E402
+from config import Config  # noqa: E402
 from providers import ProviderStore, KEY_ENV_PREFIX, list_presets  # noqa: E402
 from ClientModel import ClientModel  # noqa: E402
 
@@ -16,12 +18,21 @@ from ClientModel import ClientModel  # noqa: E402
 @pytest.fixture()
 def store(tmp_path, monkeypatch):
     """Redirect the Provider store and .env into a temp dir for isolation."""
+    env_path = tmp_path / ".env"
     monkeypatch.setattr(providers_mod, "ROOT", tmp_path)
     monkeypatch.setattr(providers_mod, "PROVIDERS_PATH", tmp_path / "providers.json")
-    monkeypatch.setattr(providers_mod, "ENV_PATH", tmp_path / ".env")
+    monkeypatch.setattr(providers_mod, "ENV_PATH", env_path)
     # ClientModel reads its own module-level ROOT for the legacy key list; point it at
     # the same temp dir so get_key_names() sees the same .env as the Provider store.
     monkeypatch.setattr(sys.modules["ClientModel"], "ROOT", tmp_path)
+    # Config reads/writes MEMORY_MODEL from its own ROOT/ENV_PATH; redirect those too so
+    # Config.memory_model() resolves against the same .env + Provider store.
+    monkeypatch.setattr(config_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(config_mod, "ENV_PATH", env_path)
+    # memory_model() uses load_dotenv(override=True); clear these so a prior test's
+    # values can't leak in via os.environ (monkeypatch restores them after the test).
+    monkeypatch.delenv("MEMORY_MODEL", raising=False)
+    monkeypatch.delenv("MEMORY_MODEL_PROVIDER_ID", raising=False)
     ClientModel.client = None
     return tmp_path
 
@@ -425,3 +436,47 @@ def test_route_deletes_provider(store):
 def test_route_delete_unknown_id_returns_404(store):
     resp = _client(store).delete("/api/providers/nope")
     assert resp.status_code == 404
+
+
+# ── MEMORY_MODEL falls back to the Active Provider's model (issue #6) ─────────
+
+
+def test_memory_model_blank_uses_active_provider_model(store):
+    ProviderStore.add_provider("A", "https://a/v1", "model-a", api_key="ka")
+    assert Config.memory_model() == "model-a"
+
+
+def test_memory_model_used_when_bound_to_active_provider(store):
+    ProviderStore.add_provider("A", "https://a/v1", "model-a", api_key="ka")
+    Config.set_memory_model("cheap-mini")  # bound to the active Provider
+    assert Config.memory_model() == "cheap-mini"
+
+
+def test_memory_model_falls_back_after_provider_switch(store):
+    ProviderStore.add_provider("A", "https://a/v1", "model-a", api_key="ka")
+    Config.set_memory_model("openrouter/cheap")  # bound to A while A is active
+    pid_b = ProviderStore.add_provider("B", "http://localhost:11434/v1", "llama3", api_key=None)
+
+    ProviderStore.set_active(pid_b)
+    # The stale memory model is not valid for B, so fall back to B's own model.
+    assert Config.memory_model() == "llama3"
+
+
+def test_memory_model_falls_back_without_binding(store):
+    # Simulate a legacy/upgraded install: MEMORY_MODEL set with no Provider binding.
+    ProviderStore.add_provider("A", "https://a/v1", "model-a", api_key="ka")
+    from dotenv import set_key
+    set_key(store / ".env", "MEMORY_MODEL", "orphan-model")
+    assert Config.memory_model() == "model-a"
+
+
+def test_set_memory_model_blank_clears_binding(store):
+    pid = ProviderStore.add_provider("A", "https://a/v1", "model-a", api_key="ka")
+    Config.set_memory_model("cheap-mini")
+    assert dotenv_values(store / ".env")["MEMORY_MODEL_PROVIDER_ID"] == pid
+
+    Config.set_memory_model("")
+    env = dotenv_values(store / ".env")
+    assert env["MEMORY_MODEL"] == ""
+    assert env["MEMORY_MODEL_PROVIDER_ID"] == ""
+    assert Config.memory_model() == "model-a"

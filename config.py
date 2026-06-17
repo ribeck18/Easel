@@ -128,20 +128,42 @@ class Config:
 
     @staticmethod
     def memory_model() -> str:
-        """Return the model used for background memory work."""
+        """Return the model used for background memory work.
+
+        ``MEMORY_MODEL`` is honored only while the Provider it was configured against
+        is still active (model identifiers are Provider-specific). If it is blank, has
+        no Provider binding, or was bound to a now-inactive Provider, fall back to the
+        Active Provider's own model so background work never runs a model the active
+        endpoint doesn't recognize.
+        """
         from ClientModel import ClientModel
+        from providers import ProviderStore
 
         load_dotenv(ENV_PATH, override=True)
         model = os.getenv("MEMORY_MODEL")
-        if model:
+        bound_id = os.getenv("MEMORY_MODEL_PROVIDER_ID")
+        active = ProviderStore.get_active()
+        if model and active is not None and bound_id == active["id"]:
             return model
         return ClientModel.get_model()
 
     @staticmethod
     def set_memory_model(model: str) -> None:
-        """Persist the memory model. Blank means fall back to the chat model."""
+        """Persist the memory model, bound to the currently-active Provider.
+
+        A blank model clears both the model and its Provider binding (falls back to the
+        Active Provider's model). A non-blank model records the active Provider's id so
+        it is only used while that Provider stays active.
+        """
+        from providers import ProviderStore
+
         Config._ensure_env()
         set_key(ENV_PATH, "MEMORY_MODEL", model)
+        if model:
+            active = ProviderStore.get_active()
+            set_key(ENV_PATH, "MEMORY_MODEL_PROVIDER_ID", active["id"] if active else "")
+        else:
+            set_key(ENV_PATH, "MEMORY_MODEL_PROVIDER_ID", "")
 
     @staticmethod
     def get_memory_model_setting() -> str:

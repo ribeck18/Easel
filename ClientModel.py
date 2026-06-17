@@ -69,6 +69,7 @@ class ClientModel:
         "TOOLS_ENABLED",
         "MEMORY_ENABLED",
         "MEMORY_MODEL",
+        "MEMORY_MODEL_PROVIDER_ID",
         "SKILLS_ENABLED",
         "MAX_TOOL_CALLS",
     }
