@@ -9,7 +9,7 @@ from dotenv import dotenv_values
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import providers as providers_mod  # noqa: E402
-from providers import ProviderStore, KEY_ENV_PREFIX  # noqa: E402
+from providers import ProviderStore, KEY_ENV_PREFIX, list_presets  # noqa: E402
 from ClientModel import ClientModel  # noqa: E402
 
 
@@ -187,3 +187,49 @@ def test_migration_is_idempotent(store):
     assert ProviderStore.migrate_legacy_env() is True
     assert ProviderStore.migrate_legacy_env() is False
     assert len(ProviderStore.list_providers()) == 1
+
+
+# ── Presets (issue #4) ───────────────────────────────────────────────────────
+
+
+def test_presets_contents():
+    by_key = {p["key"]: p for p in list_presets()}
+    assert set(by_key) == {"openai", "openrouter", "ollama"}
+    assert by_key["openai"]["base_url"] == "https://api.openai.com/v1"
+    assert by_key["openrouter"]["base_url"] == "https://openrouter.ai/api/v1"
+    assert by_key["ollama"]["base_url"] == "http://localhost:11434/v1"
+
+
+def test_presets_require_key_flags():
+    by_key = {p["key"]: p for p in list_presets()}
+    # Hosted providers need a key; the local Ollama endpoint is keyless.
+    assert by_key["openai"]["requires_key"] is True
+    assert by_key["openrouter"]["requires_key"] is True
+    assert by_key["ollama"]["requires_key"] is False
+
+
+def test_presets_expose_no_secret_fields():
+    for p in list_presets():
+        assert set(p) == {"key", "label", "base_url", "requires_key"}
+
+
+def test_list_presets_returns_copies():
+    # Mutating the returned data must not corrupt the module-level PRESETS.
+    list_presets()[0]["base_url"] = "tampered"
+    assert list_presets()[0]["base_url"] != "tampered"
+
+
+def test_preset_seeded_save_matches_handtyped(store):
+    """A Provider seeded from the keyless Ollama preset is identical to a custom one."""
+    ollama = {p["key"]: p for p in list_presets()}["ollama"]
+    pid = ProviderStore.add_provider(
+        label=ollama["label"], base_url=ollama["base_url"], model="llama3", api_key=None
+    )
+    record = ProviderStore.get_active()
+    assert record["id"] == pid
+    assert record["base_url"] == "http://localhost:11434/v1"
+    assert record["api_key_env"] is None  # keyless, exactly like a hand-typed one
+    ClientModel.set_client()
+    assert str(ClientModel.get_client().base_url).rstrip("/") == (
+        "http://localhost:11434/v1"
+    )

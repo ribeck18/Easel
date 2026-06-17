@@ -42,23 +42,63 @@
   var provOverlay   = document.getElementById('provider-modal-overlay');
   var provOpenBtn   = document.getElementById('btn-add-provider');
   var provCloseBtn  = document.getElementById('provider-modal-x');
+  var provPreset    = document.getElementById('provider-preset');
   var provLabel     = document.getElementById('provider-label');
   var provBaseUrl   = document.getElementById('provider-base-url');
   var provModel     = document.getElementById('provider-model');
   var provKey       = document.getElementById('provider-key');
+  var provKeyField  = document.getElementById('provider-key-field');
   var provRevealBtn = document.getElementById('provider-reveal-btn');
   var provSaveBtn   = document.getElementById('provider-save-btn');
   var provRevealed  = false;
+  var labelTouched  = false;
+
+  // Presets seed the form. "Custom" (empty base_url, key shown) is always last.
+  var CUSTOM_PRESET = { key: 'custom', label: 'Custom', base_url: '', requires_key: true };
+  var presets = [CUSTOM_PRESET];
+
+  function fetchPresets() {
+    fetch('/api/providers/presets')
+      .then(function(r) { return r.json(); })
+      .then(function(list) {
+        presets = (list || []).concat([CUSTOM_PRESET]);
+        if (!provPreset) return;
+        provPreset.innerHTML = presets.map(function(p) {
+          return '<option value="' + escH(p.key) + '">' + escH(p.label) + '</option>';
+        }).join('');
+      })
+      .catch(function() {});
+  }
+
+  function currentPreset() {
+    var key = provPreset ? provPreset.value : 'custom';
+    for (var i = 0; i < presets.length; i++) { if (presets[i].key === key) return presets[i]; }
+    return CUSTOM_PRESET;
+  }
+
+  function applyPreset() {
+    var p = currentPreset();
+    if (provBaseUrl) provBaseUrl.value = p.base_url || '';
+    // Auto-fill the label from the preset until the user types their own.
+    if (provLabel && !labelTouched) provLabel.value = p.key === 'custom' ? '' : p.label;
+    if (provKeyField) provKeyField.style.display = p.requires_key ? '' : 'none';
+    if (!p.requires_key && provKey) provKey.value = '';
+  }
+
+  if (provPreset) provPreset.addEventListener('change', applyPreset);
+  if (provLabel)  provLabel.addEventListener('input', function() { labelTouched = true; });
 
   function openProviderModal() {
     if (!provOverlay) return;
     provOverlay.classList.add('visible');
+    labelTouched = false;
+    if (provPreset && provPreset.options.length) provPreset.selectedIndex = 0;
     if (provLabel)   provLabel.value = '';
-    if (provBaseUrl) provBaseUrl.value = '';
     if (provModel)   provModel.value = '';
     if (provKey)   { provKey.value = ''; provKey.type = 'password'; }
     provRevealed = false;
     if (provRevealBtn) provRevealBtn.innerHTML = eyeSVG(false);
+    applyPreset();
     setTimeout(function() { if (provLabel) provLabel.focus(); }, 60);
   }
 
@@ -368,6 +408,7 @@
   }
 
   /* init */
+  fetchPresets();
   fetchProviders();
   fetchKeys();
 })();

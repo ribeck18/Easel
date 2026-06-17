@@ -131,6 +131,10 @@
         <button class="api-modal-x" id="provider-modal-x">✕</button>
       </div>
       <div class="api-modal-field">
+        <span class="api-modal-label">Provider type</span>
+        <select class="api-modal-input" id="provider-preset"></select>
+      </div>
+      <div class="api-modal-field">
         <span class="api-modal-label">Label</span>
         <input type="text" class="api-modal-input" id="provider-label" placeholder="e.g. My OpenRouter" />
       </div>
@@ -142,7 +146,7 @@
         <span class="api-modal-label">Model</span>
         <input type="text" class="api-modal-input" id="provider-model" placeholder="e.g. openai/gpt-4o" />
       </div>
-      <div class="api-modal-field">
+      <div class="api-modal-field" id="provider-key-field">
         <span class="api-modal-label">API Key</span>
         <div class="api-modal-value-row">
           <input type="password" class="api-modal-input" id="provider-key" placeholder="Leave blank if none (e.g. Ollama)" />

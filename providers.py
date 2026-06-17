@@ -27,6 +27,36 @@ PROVIDERS_PATH = ROOT / "providers.json"
 # surfaced as standalone keys.
 KEY_ENV_PREFIX = "EASEL_PROVIDER_"
 
+# Built-in starting templates for common Providers. A Preset only seeds the Add
+# Provider form (prefilling base_url); it is not itself a Provider and adds no field
+# to the stored record. ``requires_key`` is False for a local, keyless endpoint
+# (Ollama). The UI also offers a "Custom" choice for any other OpenAI-compatible URL.
+PRESETS = [
+    {
+        "key": "openai",
+        "label": "OpenAI",
+        "base_url": "https://api.openai.com/v1",
+        "requires_key": True,
+    },
+    {
+        "key": "openrouter",
+        "label": "OpenRouter",
+        "base_url": "https://openrouter.ai/api/v1",
+        "requires_key": True,
+    },
+    {
+        "key": "ollama",
+        "label": "Ollama",
+        "base_url": "http://localhost:11434/v1",
+        "requires_key": False,
+    },
+]
+
+
+def list_presets() -> list[dict]:
+    """Return the built-in Provider presets (no secrets)."""
+    return [dict(p) for p in PRESETS]
+
 
 class ProviderStore:
     """Static-accessor store for Providers, mirroring ``ClientModel``/``Config``."""

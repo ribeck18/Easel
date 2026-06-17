@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from ClientModel import ClientModel
 from config import Config
-from providers import ProviderStore
+from providers import ProviderStore, list_presets
 
 
 route = APIRouter()
@@ -18,6 +18,11 @@ class ProviderRequest(BaseModel):
     base_url: str
     model: str
     api_key: str | None = None
+
+
+@route.get("/api/providers/presets")
+async def get_provider_presets() -> list[dict]:
+    return list_presets()
 
 
 @route.get("/api/providers")
