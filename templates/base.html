@@ -30,7 +30,7 @@
     </div>
     <div class="nav-right">
       <span class="nav-pill">
-        <span class="status-dot"></span>mock-1 · ready
+        <span class="status-dot"></span>{% if active_model %}{{ active_model }} · ready{% else %}No provider{% endif %}
       </span>
     </div>
   </nav>

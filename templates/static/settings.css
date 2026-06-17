@@ -110,6 +110,17 @@
   text-overflow: ellipsis;
 }
 
+.provider-row {
+  cursor: pointer;
+}
+
+.provider-radio {
+  flex: 0 0 auto;
+  margin: 0 0 0 14px;
+  accent-color: var(--accent, currentColor);
+  cursor: pointer;
+}
+
 .api-key-actions {
   display: flex;
   align-items: center;

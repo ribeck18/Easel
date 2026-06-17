@@ -219,6 +219,58 @@ def test_list_presets_returns_copies():
     assert list_presets()[0]["base_url"] != "tampered"
 
 
+# ── Listing & switching the active Provider (issue #3) ───────────────────────
+
+
+def test_list_exposes_label_and_model_for_each(store):
+    ProviderStore.add_provider("Alpha", "https://a/v1", "model-a", api_key="ka")
+    ProviderStore.add_provider("Beta", "https://b/v1", "model-b", api_key=None)
+    listed = ProviderStore.list_providers()
+    assert [(p["label"], p["model"]) for p in listed] == [
+        ("Alpha", "model-a"),
+        ("Beta", "model-b"),
+    ]
+
+
+def test_switching_updates_active_client_and_model(store):
+    ProviderStore.add_provider("A", "https://a/v1", "model-a", api_key="ka")
+    pid_b = ProviderStore.add_provider("B", "https://b/v1", "model-b", api_key="kb")
+
+    ProviderStore.set_active(pid_b)
+    ClientModel.set_client()
+
+    assert ProviderStore.get_active()["id"] == pid_b
+    assert ClientModel.get_model() == "model-b"
+    assert str(ClientModel.get_client().base_url).rstrip("/") == "https://b/v1"
+
+
+def _client(store_dir):
+    """Bare FastAPI app with only the settings router (no lifespan) for fast route tests."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from routes import settings_routes
+
+    app = FastAPI()
+    app.include_router(settings_routes.route)
+    return TestClient(app)
+
+
+def test_route_switches_active_provider(store):
+    ProviderStore.add_provider("A", "https://a/v1", "model-a", api_key="ka")
+    pid_b = ProviderStore.add_provider("B", "https://b/v1", "model-b", api_key="kb")
+
+    resp = _client(store).post("/api/providers/active", json={"id": pid_b})
+    assert resp.status_code == 200
+    assert resp.json() == {"active_id": pid_b, "model": "model-b"}
+    assert ProviderStore.get_active()["id"] == pid_b
+
+
+def test_route_switch_unknown_id_returns_404(store):
+    ProviderStore.add_provider("A", "https://a/v1", "model-a", api_key="ka")
+    resp = _client(store).post("/api/providers/active", json={"id": "nope"})
+    assert resp.status_code == 404
+
+
 def test_preset_seeded_save_matches_handtyped(store):
     """A Provider seeded from the keyless Ollama preset is identical to a custom one."""
     ollama = {p["key"]: p for p in list_presets()}["ollama"]

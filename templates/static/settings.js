@@ -31,12 +31,40 @@
       return;
     }
     list.innerHTML = providers.map(function(p) {
-      var active = p.id === activeProviderId ? ' · active' : '';
-      return '<div class="api-key-row">'
-        + '<div class="api-key-name">' + escH(p.label) + active + '</div>'
+      var checked = p.id === activeProviderId ? ' checked' : '';
+      return '<label class="api-key-row provider-row">'
+        + '<input type="radio" name="active-provider" class="provider-radio" value="' + escH(p.id) + '"' + checked + ' />'
+        + '<div class="api-key-name">' + escH(p.label) + '</div>'
         + '<div class="api-key-value">' + escH(p.model) + '</div>'
-        + '</div>';
+        + '</label>';
     }).join('');
+    Array.prototype.forEach.call(list.querySelectorAll('.provider-radio'), function(radio) {
+      radio.addEventListener('change', function() {
+        if (radio.checked) setActiveProvider(radio.value);
+      });
+    });
+  }
+
+  function setActiveProvider(id) {
+    fetch('/api/providers/active', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id }),
+    }).then(function(r) {
+      if (!r.ok) throw new Error('switch failed');
+      return r.json();
+    }).then(function(data) {
+      activeProviderId = data.active_id;
+      updateNavPill(data.model);
+    }).catch(function() {
+      // Roll the selection back to whatever is actually active on the server.
+      fetchProviders();
+    });
+  }
+
+  function updateNavPill(model) {
+    var pill = document.querySelector('.nav-pill');
+    if (pill) pill.innerHTML = '<span class="status-dot"></span>' + escH(model) + ' · ready';
   }
 
   var provOverlay   = document.getElementById('provider-modal-overlay');

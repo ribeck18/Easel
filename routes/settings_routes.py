@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ClientModel import ClientModel
@@ -18,6 +18,10 @@ class ProviderRequest(BaseModel):
     base_url: str
     model: str
     api_key: str | None = None
+
+
+class ActiveProviderRequest(BaseModel):
+    id: str
 
 
 @route.get("/api/providers/presets")
@@ -43,6 +47,16 @@ async def add_provider(payload: ProviderRequest) -> dict:
     )
     ClientModel.set_client()
     return {"id": provider_id}
+
+
+@route.post("/api/providers/active")
+async def set_active_provider(payload: ActiveProviderRequest) -> dict:
+    try:
+        ProviderStore.set_active(payload.id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Unknown provider")
+    ClientModel.set_client()
+    return {"active_id": payload.id, "model": ClientModel.get_model()}
 
 
 @route.get("/api/keys")
