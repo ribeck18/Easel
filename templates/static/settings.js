@@ -8,6 +8,94 @@
 
   function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+  /* ── Providers ──────────────────────────────────────── */
+  var providers = [];
+  var activeProviderId = null;
+
+  function fetchProviders() {
+    fetch('/api/providers')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        providers = data.providers || [];
+        activeProviderId = data.active_id || null;
+        renderProviders();
+      })
+      .catch(function() { providers = []; activeProviderId = null; renderProviders(); });
+  }
+
+  function renderProviders() {
+    var list = document.getElementById('providers-list');
+    if (!list) return;
+    if (!providers.length) {
+      list.innerHTML = '<div class="api-key-empty">No providers configured. Add one to connect a model.</div>';
+      return;
+    }
+    list.innerHTML = providers.map(function(p) {
+      var active = p.id === activeProviderId ? ' · active' : '';
+      return '<div class="api-key-row">'
+        + '<div class="api-key-name">' + escH(p.label) + active + '</div>'
+        + '<div class="api-key-value">' + escH(p.model) + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  var provOverlay   = document.getElementById('provider-modal-overlay');
+  var provOpenBtn   = document.getElementById('btn-add-provider');
+  var provCloseBtn  = document.getElementById('provider-modal-x');
+  var provLabel     = document.getElementById('provider-label');
+  var provBaseUrl   = document.getElementById('provider-base-url');
+  var provModel     = document.getElementById('provider-model');
+  var provKey       = document.getElementById('provider-key');
+  var provRevealBtn = document.getElementById('provider-reveal-btn');
+  var provSaveBtn   = document.getElementById('provider-save-btn');
+  var provRevealed  = false;
+
+  function openProviderModal() {
+    if (!provOverlay) return;
+    provOverlay.classList.add('visible');
+    if (provLabel)   provLabel.value = '';
+    if (provBaseUrl) provBaseUrl.value = '';
+    if (provModel)   provModel.value = '';
+    if (provKey)   { provKey.value = ''; provKey.type = 'password'; }
+    provRevealed = false;
+    if (provRevealBtn) provRevealBtn.innerHTML = eyeSVG(false);
+    setTimeout(function() { if (provLabel) provLabel.focus(); }, 60);
+  }
+
+  function closeProviderModal() { if (provOverlay) provOverlay.classList.remove('visible'); }
+
+  if (provOpenBtn)  provOpenBtn.addEventListener('click', openProviderModal);
+  if (provCloseBtn) provCloseBtn.addEventListener('click', closeProviderModal);
+  if (provOverlay)  provOverlay.addEventListener('click', function(e) { if (e.target === provOverlay) closeProviderModal(); });
+
+  if (provRevealBtn) {
+    provRevealBtn.addEventListener('click', function() {
+      provRevealed = !provRevealed;
+      provKey.type = provRevealed ? 'text' : 'password';
+      provRevealBtn.innerHTML = eyeSVG(provRevealed);
+    });
+  }
+
+  if (provSaveBtn) {
+    provSaveBtn.addEventListener('click', function() {
+      var label   = provLabel ? provLabel.value.trim() : '';
+      var baseUrl = provBaseUrl ? provBaseUrl.value.trim() : '';
+      var model   = provModel ? provModel.value.trim() : '';
+      var key     = provKey ? provKey.value.trim() : '';
+      if (!label || !baseUrl || !model) return;
+      fetch('/api/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: label, base_url: baseUrl, model: model, api_key: key || null }),
+      }).then(function() { fetchProviders(); });
+      closeProviderModal();
+    });
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && provOverlay && provOverlay.classList.contains('visible')) closeProviderModal();
+  });
+
   function eyeSVG(slashed) {
     var line = slashed ? '<path d="M2 2l10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"/>' : '';
     return '<svg width="13" height="13" viewBox="0 0 13 13" fill="none">'
@@ -280,5 +368,6 @@
   }
 
   /* init */
+  fetchProviders();
   fetchKeys();
 })();

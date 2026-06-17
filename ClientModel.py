@@ -5,22 +5,29 @@ from pathlib import Path
 import os
 
 from paths import data_dir
+from providers import ProviderStore, KEY_ENV_PREFIX
 
 
 ROOT = data_dir()
 
+# Placeholder key for keyless Providers (e.g. a local Ollama install). The OpenAI
+# SDK requires a non-empty api_key even when the endpoint ignores it.
+_NO_AUTH_PLACEHOLDER = "sk-no-auth"
+
 
 class ClientModel:
-    api_key_name: Optional[str] = "OPENROUTER_API_KEY"
     client: Optional[OpenAI] = None
 
     @staticmethod
     def set_client():
+        """Build the OpenAI client from the Active Provider (ADR-0001)."""
+        active = ProviderStore.get_active()
+        if active is None:
+            raise ValueError("No Provider is active. Add one in Settings.")
+
         ClientModel.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=ClientModel.get_api_key(),
-            # base_url="http://localhost:11434/v1",
-            # api_key="ollama",
+            base_url=active["base_url"],
+            api_key=ProviderStore.get_active_api_key() or _NO_AUTH_PLACEHOLDER,
         )
 
     @staticmethod
@@ -41,26 +48,11 @@ class ClientModel:
 
     @staticmethod
     def get_model() -> str:
-        load_dotenv(ROOT / ".env", override=True)
-        model = os.getenv("MODEL")
-
-        if model is None:
-            raise ValueError("No model set.")
-
-        return model
-
-    @staticmethod
-    def get_api_key():
-        if ClientModel.api_key_name is None:
-            raise ValueError("No API key was found. Make sure you have set one.")
-
-        load_dotenv(ROOT / ".env", override=True)
-        api_key = os.getenv(ClientModel.api_key_name)
-
-        if api_key is None:
-            raise ValueError("API key could not be found.")
-
-        return api_key
+        """Return the Active Provider's selected model."""
+        active = ProviderStore.get_active()
+        if active is None:
+            raise ValueError("No Provider is active, so no model is set.")
+        return active["model"]
 
     # Config/settings entries stored in .env that are not API keys and
     # should not be surfaced in the Settings page's API Keys list.
@@ -82,6 +74,7 @@ class ClientModel:
             k
             for k in dotenv_values(env_path).keys()
             if k.upper() not in ClientModel._NON_KEY_ENV
+            and not k.startswith(KEY_ENV_PREFIX)
         ]
 
     @staticmethod

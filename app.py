@@ -15,6 +15,7 @@ from routes import (
     skills_routes,
 )
 from ClientModel import ClientModel
+from providers import ProviderStore
 from services.memory_sweeper import run_memory_sweeper
 from services.scheduler import scheduler
 from user_database.chats_database import create_database
@@ -28,7 +29,7 @@ STATIC_DIR = TEMPLATES_DIR / "static"
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     create_database()
-    if ClientModel.get_key_names():
+    if ProviderStore.get_active() is not None:
         ClientModel.set_client()
     if not scheduler.running:
         scheduler.start()
@@ -61,7 +62,7 @@ async def healthz():
 
 @app.middleware("http")
 async def require_api_key(request: Request, call_next):
-    excluded = ["/settings", "/api/setkey", "/api/setmodel", "/api/keys", "/static", "/healthz"]
+    excluded = ["/settings", "/api/providers", "/api/setkey", "/api/setmodel", "/api/keys", "/static", "/healthz"]
     if ClientModel.client is None and not any(
         request.url.path.startswith(path) for path in excluded
     ):

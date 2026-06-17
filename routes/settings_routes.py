@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from ClientModel import ClientModel
 from config import Config
+from providers import ProviderStore
 
 
 route = APIRouter()
@@ -10,6 +11,33 @@ route = APIRouter()
 
 class AgentsRequest(BaseModel):
     content: str
+
+
+class ProviderRequest(BaseModel):
+    label: str
+    base_url: str
+    model: str
+    api_key: str | None = None
+
+
+@route.get("/api/providers")
+async def get_providers() -> dict:
+    return {
+        "active_id": (ProviderStore.get_active() or {}).get("id"),
+        "providers": ProviderStore.list_providers(),
+    }
+
+
+@route.post("/api/providers")
+async def add_provider(payload: ProviderRequest) -> dict:
+    provider_id = ProviderStore.add_provider(
+        label=payload.label,
+        base_url=payload.base_url,
+        model=payload.model,
+        api_key=payload.api_key,
+    )
+    ClientModel.set_client()
+    return {"id": provider_id}
 
 
 @route.get("/api/keys")
@@ -20,7 +48,10 @@ async def get_keys() -> list[str]:
 @route.post("/api/setkey")
 async def edit_env(key_name: str, key: str) -> None:
     ClientModel.add_env_var(key_name=key_name, key=key)
-    ClientModel.set_client()
+    # The active Provider is the source of truth for the client; only (re)build it
+    # here if one already exists, so adding a legacy key doesn't error pre-Provider.
+    if ProviderStore.get_active() is not None:
+        ClientModel.set_client()
 
 
 @route.post("/api/setmodel")
