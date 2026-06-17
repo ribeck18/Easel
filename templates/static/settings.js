@@ -19,8 +19,24 @@
         providers = data.providers || [];
         activeProviderId = data.active_id || null;
         renderProviders();
+        syncNavPill();
       })
       .catch(function() { providers = []; activeProviderId = null; renderProviders(); });
+  }
+
+  function activeProvider() {
+    for (var i = 0; i < providers.length; i++) {
+      if (providers[i].id === activeProviderId) return providers[i];
+    }
+    return null;
+  }
+
+  function syncNavPill() {
+    var active = activeProvider();
+    var pill = document.querySelector('.nav-pill');
+    if (!pill) return;
+    pill.innerHTML = '<span class="status-dot"></span>'
+      + (active ? escH(active.model) + ' · ready' : 'No provider');
   }
 
   function renderProviders() {
@@ -32,17 +48,37 @@
     }
     list.innerHTML = providers.map(function(p) {
       var checked = p.id === activeProviderId ? ' checked' : '';
-      return '<label class="api-key-row provider-row">'
+      return '<div class="api-key-row provider-row">'
         + '<input type="radio" name="active-provider" class="provider-radio" value="' + escH(p.id) + '"' + checked + ' />'
         + '<div class="api-key-name">' + escH(p.label) + '</div>'
         + '<div class="api-key-value">' + escH(p.model) + '</div>'
-        + '</label>';
+        + '<div class="provider-actions">'
+        +   '<button type="button" class="provider-action-btn" data-act="edit" data-id="' + escH(p.id) + '">Edit</button>'
+        +   '<button type="button" class="provider-action-btn provider-action-del" data-act="delete" data-id="' + escH(p.id) + '">Delete</button>'
+        + '</div>'
+        + '</div>';
     }).join('');
     Array.prototype.forEach.call(list.querySelectorAll('.provider-radio'), function(radio) {
       radio.addEventListener('change', function() {
         if (radio.checked) setActiveProvider(radio.value);
       });
     });
+    Array.prototype.forEach.call(list.querySelectorAll('.provider-action-btn'), function(btn) {
+      btn.addEventListener('click', function() {
+        var id = btn.getAttribute('data-id');
+        if (btn.getAttribute('data-act') === 'edit') openEditModal(id);
+        else deleteProvider(id);
+      });
+    });
+  }
+
+  function deleteProvider(id) {
+    var p = null;
+    for (var i = 0; i < providers.length; i++) { if (providers[i].id === id) p = providers[i]; }
+    var name = p ? p.label : 'this provider';
+    if (!window.confirm('Delete "' + name + '"? This cannot be undone.')) return;
+    fetch('/api/providers/' + encodeURIComponent(id), { method: 'DELETE' })
+      .then(function() { fetchProviders(); });
   }
 
   function setActiveProvider(id) {
@@ -71,6 +107,7 @@
   var provOpenBtn   = document.getElementById('btn-add-provider');
   var provCloseBtn  = document.getElementById('provider-modal-x');
   var provPreset    = document.getElementById('provider-preset');
+  var provPresetFld = document.getElementById('provider-preset-field');
   var provLabel     = document.getElementById('provider-label');
   var provBaseUrl   = document.getElementById('provider-base-url');
   var provModel     = document.getElementById('provider-model');
@@ -78,8 +115,10 @@
   var provKeyField  = document.getElementById('provider-key-field');
   var provRevealBtn = document.getElementById('provider-reveal-btn');
   var provSaveBtn   = document.getElementById('provider-save-btn');
+  var provTitle     = provOverlay ? provOverlay.querySelector('.api-modal-title') : null;
   var provRevealed  = false;
   var labelTouched  = false;
+  var editingId     = null;  // null = add mode; an id = editing that Provider
 
   // Presets seed the form. "Custom" (empty base_url, key shown) is always last.
   var CUSTOM_PRESET = { key: 'custom', label: 'Custom', base_url: '', requires_key: true };
@@ -116,17 +155,45 @@
   if (provPreset) provPreset.addEventListener('change', applyPreset);
   if (provLabel)  provLabel.addEventListener('input', function() { labelTouched = true; });
 
+  function resetKeyField() {
+    if (provKey) { provKey.value = ''; provKey.type = 'password'; }
+    provRevealed = false;
+    if (provRevealBtn) provRevealBtn.innerHTML = eyeSVG(false);
+  }
+
   function openProviderModal() {
     if (!provOverlay) return;
+    editingId = null;
+    if (provTitle) provTitle.textContent = 'Add Provider';
+    if (provSaveBtn) provSaveBtn.textContent = 'Save Provider';
+    if (provPresetFld) provPresetFld.style.display = '';
+    if (provKey) provKey.placeholder = 'Leave blank if none (e.g. Ollama)';
     provOverlay.classList.add('visible');
     labelTouched = false;
     if (provPreset && provPreset.options.length) provPreset.selectedIndex = 0;
     if (provLabel)   provLabel.value = '';
     if (provModel)   provModel.value = '';
-    if (provKey)   { provKey.value = ''; provKey.type = 'password'; }
-    provRevealed = false;
-    if (provRevealBtn) provRevealBtn.innerHTML = eyeSVG(false);
+    resetKeyField();
     applyPreset();
+    setTimeout(function() { if (provLabel) provLabel.focus(); }, 60);
+  }
+
+  function openEditModal(id) {
+    if (!provOverlay) return;
+    var p = null;
+    for (var i = 0; i < providers.length; i++) { if (providers[i].id === id) p = providers[i]; }
+    if (!p) return;
+    editingId = id;
+    if (provTitle) provTitle.textContent = 'Edit Provider';
+    if (provSaveBtn) provSaveBtn.textContent = 'Save Changes';
+    if (provPresetFld) provPresetFld.style.display = 'none';  // presets only seed new ones
+    if (provKeyField) provKeyField.style.display = '';        // always allow setting a key
+    if (provLabel)   provLabel.value = p.label;
+    if (provBaseUrl) provBaseUrl.value = p.base_url;
+    if (provModel)   provModel.value = p.model;
+    resetKeyField();
+    if (provKey) provKey.placeholder = p.has_key ? 'Leave blank to keep current key' : 'Add a key (optional)';
+    provOverlay.classList.add('visible');
     setTimeout(function() { if (provLabel) provLabel.focus(); }, 60);
   }
 
@@ -151,8 +218,9 @@
       var model   = provModel ? provModel.value.trim() : '';
       var key     = provKey ? provKey.value.trim() : '';
       if (!label || !baseUrl || !model) return;
-      fetch('/api/providers', {
-        method: 'POST',
+      var url = editingId ? '/api/providers/' + encodeURIComponent(editingId) : '/api/providers';
+      fetch(url, {
+        method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: label, base_url: baseUrl, model: model, api_key: key || null }),
       }).then(function() { fetchProviders(); });

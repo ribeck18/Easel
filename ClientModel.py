@@ -31,6 +31,14 @@ class ClientModel:
         )
 
     @staticmethod
+    def refresh_client():
+        """Rebuild the client from the active Provider, or drop it if none is active."""
+        if ProviderStore.get_active() is not None:
+            ClientModel.set_client()
+        else:
+            ClientModel.client = None
+
+    @staticmethod
     def get_client():
         if ClientModel.client is None:
             raise ValueError("Client has not been initalized.")

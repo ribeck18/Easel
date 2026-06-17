@@ -121,6 +121,36 @@
   cursor: pointer;
 }
 
+.provider-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 0 14px;
+  flex-shrink: 0;
+}
+
+.provider-action-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-soft, var(--text));
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.provider-action-btn:hover {
+  color: var(--text);
+  border-color: var(--text-xsoft, var(--border));
+}
+
+.provider-action-del:hover {
+  color: var(--danger, #d9534f);
+  border-color: var(--danger, #d9534f);
+}
+
 .api-key-actions {
   display: flex;
   align-items: center;

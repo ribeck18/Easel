@@ -27,6 +27,10 @@ PROVIDERS_PATH = ROOT / "providers.json"
 # surfaced as standalone keys.
 KEY_ENV_PREFIX = "EASEL_PROVIDER_"
 
+# Sentinel for ``update_provider``: distinguishes "leave the API key untouched" from
+# passing ``None`` (which means "keyless").
+_UNCHANGED = object()
+
 # Built-in starting templates for common Providers. A Preset only seeds the Add
 # Provider form (prefilling base_url); it is not itself a Provider and adds no field
 # to the stored record. ``requires_key`` is False for a local, keyless endpoint
@@ -160,6 +164,73 @@ class ProviderStore:
         if not any(p["id"] == provider_id for p in data["providers"]):
             raise ValueError(f"No Provider with id {provider_id!r}.")
         data["active_id"] = provider_id
+        ProviderStore._write(data)
+
+    @staticmethod
+    def update_provider(
+        provider_id: str,
+        label: str,
+        base_url: str,
+        model: str,
+        api_key=_UNCHANGED,
+    ) -> None:
+        """Edit a stored Provider's fields. Raises ``ValueError`` if the id is unknown.
+
+        ``label``/``base_url``/``model`` are always overwritten. The API key is only
+        touched when ``api_key`` is a real value:
+
+        * ``_UNCHANGED`` (default) -> leave the existing key alone.
+        * a non-empty string -> write it. Overwrites the value at the record's existing
+          ``api_key_env`` (so a migrated ``OPENROUTER_API_KEY`` keeps working); if the
+          Provider was keyless, a namespaced ``EASEL_PROVIDER_<id>_KEY`` is created.
+        """
+        data = ProviderStore._read()
+        record = next((p for p in data["providers"] if p["id"] == provider_id), None)
+        if record is None:
+            raise ValueError(f"No Provider with id {provider_id!r}.")
+
+        record["label"] = label
+        record["base_url"] = base_url
+        record["model"] = model
+
+        if api_key is not _UNCHANGED and api_key:
+            env_name = record.get("api_key_env") or f"{KEY_ENV_PREFIX}{provider_id}_KEY"
+            if not ENV_PATH.exists():
+                ROOT.mkdir(parents=True, exist_ok=True)
+                open(ENV_PATH, "w").close()
+            set_key(ENV_PATH, env_name, api_key)
+            record["api_key_env"] = env_name
+
+        ProviderStore._write(data)
+
+    @staticmethod
+    def delete_provider(provider_id: str) -> None:
+        """Remove a Provider, clean up its orphaned ``.env`` key, and fix up ``active_id``.
+
+        Raises ``ValueError`` if the id is unknown. The API key var is only unset when no
+        remaining Provider still references that same env-var name. If the deleted Provider
+        was active, ``active_id`` falls back to the first remaining Provider (or ``None``
+        when none remain).
+        """
+        data = ProviderStore._read()
+        record = next((p for p in data["providers"] if p["id"] == provider_id), None)
+        if record is None:
+            raise ValueError(f"No Provider with id {provider_id!r}.")
+
+        data["providers"] = [p for p in data["providers"] if p["id"] != provider_id]
+
+        env_name = record.get("api_key_env")
+        if env_name and not any(
+            p.get("api_key_env") == env_name for p in data["providers"]
+        ):
+            if ENV_PATH.exists():
+                unset_key(ENV_PATH, env_name)
+
+        if data["active_id"] == provider_id:
+            data["active_id"] = (
+                data["providers"][0]["id"] if data["providers"] else None
+            )
+
         ProviderStore._write(data)
 
     @staticmethod

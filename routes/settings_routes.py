@@ -59,6 +59,36 @@ async def set_active_provider(payload: ActiveProviderRequest) -> dict:
     return {"active_id": payload.id, "model": ClientModel.get_model()}
 
 
+@route.put("/api/providers/{provider_id}")
+async def update_provider(provider_id: str, payload: ProviderRequest) -> dict:
+    # A blank api_key means "keep the current key"; only set it when one is supplied.
+    kwargs = {"api_key": payload.api_key} if payload.api_key else {}
+    try:
+        ProviderStore.update_provider(
+            provider_id,
+            label=payload.label,
+            base_url=payload.base_url,
+            model=payload.model,
+            **kwargs,
+        )
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Unknown provider")
+    active = ProviderStore.get_active()
+    if active is not None and active["id"] == provider_id:
+        ClientModel.set_client()
+    return {"id": provider_id}
+
+
+@route.delete("/api/providers/{provider_id}")
+async def delete_provider(provider_id: str) -> dict:
+    try:
+        ProviderStore.delete_provider(provider_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Unknown provider")
+    ClientModel.refresh_client()
+    return {"active_id": (ProviderStore.get_active() or {}).get("id")}
+
+
 @route.get("/api/keys")
 async def get_keys() -> list[str]:
     return ClientModel.get_key_names()
