@@ -1,6 +1,4 @@
 (function () {
-  var keys = [];
-
   function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   /* ── Providers ──────────────────────────────────────── */
@@ -236,79 +234,6 @@
       + '</svg>';
   }
 
-  function fetchKeys() {
-    fetch('/api/keys')
-      .then(function(r) { return r.json(); })
-      .then(function(names) { keys = names; renderKeys(); })
-      .catch(function() { keys = []; renderKeys(); });
-  }
-
-  function renderKeys() {
-    var list = document.getElementById('api-keys-list');
-    if (!list) return;
-    if (!keys.length) {
-      list.innerHTML = '<div class="api-key-empty">No API keys configured. Add one to connect a provider.</div>';
-      return;
-    }
-    list.innerHTML = keys.map(function(name) {
-      return '<div class="api-key-row">'
-        + '<div class="api-key-name">' + escH(name) + '</div>'
-        + '<div class="api-key-value">••••••••••••••••</div>'
-        + '</div>';
-    }).join('');
-  }
-
-  /* ── Modal ──────────────────────────────────────────── */
-  var overlay      = document.getElementById('api-modal-overlay');
-  var openBtn      = document.getElementById('btn-add-api');
-  var closeBtn     = document.getElementById('api-modal-x');
-  var modalName    = document.getElementById('modal-key-name');
-  var modalValue   = document.getElementById('modal-key-value');
-  var revealBtn    = document.getElementById('modal-reveal-btn');
-  var apiSaveBtn   = document.getElementById('api-save-btn');
-  var valRevealed  = false;
-
-  function openModal() {
-    overlay.classList.add('visible');
-    if (modalName)  { modalName.value  = ''; }
-    if (modalValue) { modalValue.value = ''; modalValue.type = 'password'; }
-    valRevealed = false;
-    revealBtn.innerHTML = eyeSVG(false);
-    setTimeout(function() { if (modalName) modalName.focus(); }, 60);
-  }
-
-  function closeModal() { overlay.classList.remove('visible'); }
-
-  if (openBtn)  openBtn.addEventListener('click', openModal);
-  if (closeBtn) closeBtn.addEventListener('click', closeModal);
-  if (overlay)  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && overlay.classList.contains('visible')) closeModal();
-  });
-
-  if (revealBtn) {
-    revealBtn.addEventListener('click', function() {
-      valRevealed = !valRevealed;
-      modalValue.type = valRevealed ? 'text' : 'password';
-      revealBtn.innerHTML = eyeSVG(valRevealed);
-    });
-  }
-
-  if (apiSaveBtn) {
-    apiSaveBtn.addEventListener('click', function() {
-      var name = modalName ? modalName.value.trim().toUpperCase().replace(/\s+/g, '_') : '';
-      var val  = modalValue ? modalValue.value.trim() : '';
-      if (!name || !val) return;
-      fetch('/api/setkey?' + new URLSearchParams({ key_name: name, key: val }), { method: 'POST' })
-        .then(function() { fetchKeys(); });
-      closeModal();
-    });
-  }
-
-  if (modalName)  modalName.addEventListener('keydown',  function(e) { if (e.key === 'Enter') { e.preventDefault(); if (modalValue) modalValue.focus(); } });
-  if (modalValue) modalValue.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); if (apiSaveBtn) apiSaveBtn.click(); } });
-
   /* ── Tools toggle ───────────────────────────────────── */
   var toolsToggle = document.getElementById('tools-toggle-input');
 
@@ -471,5 +396,4 @@
   /* init */
   fetchPresets();
   fetchProviders();
-  fetchKeys();
 })();

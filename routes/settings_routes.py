@@ -89,20 +89,6 @@ async def delete_provider(provider_id: str) -> dict:
     return {"active_id": (ProviderStore.get_active() or {}).get("id")}
 
 
-@route.get("/api/keys")
-async def get_keys() -> list[str]:
-    return ClientModel.get_key_names()
-
-
-@route.post("/api/setkey")
-async def edit_env(key_name: str, key: str) -> None:
-    ClientModel.add_env_var(key_name=key_name, key=key)
-    # The active Provider is the source of truth for the client; only (re)build it
-    # here if one already exists, so adding a legacy key doesn't error pre-Provider.
-    if ProviderStore.get_active() is not None:
-        ClientModel.set_client()
-
-
 @route.get("/api/settings/tools")
 async def get_tools_setting() -> dict:
     return {

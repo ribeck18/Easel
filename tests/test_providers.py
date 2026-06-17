@@ -22,9 +22,6 @@ def store(tmp_path, monkeypatch):
     monkeypatch.setattr(providers_mod, "ROOT", tmp_path)
     monkeypatch.setattr(providers_mod, "PROVIDERS_PATH", tmp_path / "providers.json")
     monkeypatch.setattr(providers_mod, "ENV_PATH", env_path)
-    # ClientModel reads its own module-level ROOT for the legacy key list; point it at
-    # the same temp dir so get_key_names() sees the same .env as the Provider store.
-    monkeypatch.setattr(sys.modules["ClientModel"], "ROOT", tmp_path)
     # Config reads/writes MEMORY_MODEL from its own ROOT/ENV_PATH; redirect those too so
     # Config.memory_model() resolves against the same .env + Provider store.
     monkeypatch.setattr(config_mod, "ROOT", tmp_path)
@@ -157,14 +154,14 @@ def test_migrates_legacy_env(store):
     )
 
 
-def test_migration_is_additive_and_hides_key_from_legacy_list(store):
+def test_migration_is_additive(store):
     _write_legacy_env(store, OPENROUTER_API_KEY="sk-old", MODEL="m")
     ProviderStore.migrate_legacy_env()
 
-    # .env is untouched: the key still lives there...
+    # .env is untouched: the migrated key still lives there, now owned by the Provider.
     assert dotenv_values(store / ".env")["OPENROUTER_API_KEY"] == "sk-old"
-    # ...but it is now owned by a Provider, so it drops out of the legacy key list.
-    assert "OPENROUTER_API_KEY" not in ClientModel.get_key_names()
+    assert ProviderStore.get_active()["api_key_env"] == "OPENROUTER_API_KEY"
+    assert ProviderStore.get_active_api_key() == "sk-old"
 
 
 def test_migration_noop_when_providers_exist(store):

@@ -63,7 +63,7 @@ async def healthz():
 
 @app.middleware("http")
 async def require_api_key(request: Request, call_next):
-    excluded = ["/settings", "/api/providers", "/api/setkey", "/api/keys", "/static", "/healthz"]
+    excluded = ["/settings", "/api/providers", "/static", "/healthz"]
     if ClientModel.client is None and not any(
         request.url.path.startswith(path) for path in excluded
     ):

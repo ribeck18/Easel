@@ -234,15 +234,6 @@ class ProviderStore:
         ProviderStore._write(data)
 
     @staticmethod
-    def key_env_names() -> set[str]:
-        """Return every ``.env`` var name owned by a stored Provider (its api_key_env)."""
-        return {
-            p["api_key_env"]
-            for p in ProviderStore._read()["providers"]
-            if p.get("api_key_env")
-        }
-
-    @staticmethod
     def migrate_legacy_env() -> bool:
         """One-shot upgrade of a pre-Provider install to an active OpenRouter Provider.
 
