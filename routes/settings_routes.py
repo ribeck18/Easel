@@ -103,16 +103,6 @@ async def edit_env(key_name: str, key: str) -> None:
         ClientModel.set_client()
 
 
-@route.post("/api/setmodel")
-async def set_model(model: str) -> None:
-    ClientModel.set_model(model=model)
-
-    chosen_model = ClientModel.get_model()
-
-    # for debug
-    print(chosen_model)
-
-
 @route.get("/api/settings/tools")
 async def get_tools_setting() -> dict:
     return {

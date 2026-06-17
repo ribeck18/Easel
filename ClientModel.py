@@ -1,6 +1,6 @@
 from typing import Optional
 from openai import OpenAI
-from dotenv import dotenv_values, load_dotenv, set_key
+from dotenv import dotenv_values, set_key
 from pathlib import Path
 import os
 
@@ -44,15 +44,6 @@ class ClientModel:
             raise ValueError("Client has not been initalized.")
 
         return ClientModel.client
-
-    @staticmethod
-    def set_model(model: str):
-        env_path: Path = Path(ROOT / ".env")
-
-        if not env_path.exists():
-            open(env_path, "w").close()
-
-        set_key(env_path, "MODEL", model)
 
     @staticmethod
     def get_model() -> str:

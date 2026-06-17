@@ -1,9 +1,4 @@
 (function () {
-  var STORAGE_MODEL = 'easel_model';
-
-  function loadModel() { return localStorage.getItem(STORAGE_MODEL) || 'mock-1'; }
-  function saveModel(m){ localStorage.setItem(STORAGE_MODEL, m); }
-
   var keys = [];
 
   function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -261,36 +256,6 @@
         + '<div class="api-key-value">••••••••••••••••</div>'
         + '</div>';
     }).join('');
-  }
-
-  /* ── Model ──────────────────────────────────────────── */
-  var modelInput   = document.getElementById('model-input');
-  var modelSaveBtn = document.getElementById('model-save-btn');
-  var modelHint    = document.getElementById('model-hint');
-
-  if (modelInput) {
-    modelInput.value = loadModel();
-
-    modelSaveBtn.addEventListener('click', function() {
-      var val = modelInput.value.trim();
-      if (!val) return;
-      saveModel(val);
-      fetch('/api/setmodel?' + new URLSearchParams({ model: val }), { method: 'POST' });
-      var pill = document.querySelector('.nav-pill');
-      if (pill) pill.innerHTML = '<span class="status-dot"></span>' + escH(val) + ' · ready';
-      modelSaveBtn.textContent = 'Saved';
-      modelSaveBtn.classList.add('saved');
-      modelHint.textContent = 'Saved. Active on next conversation.';
-      setTimeout(function() {
-        modelSaveBtn.textContent = 'Save';
-        modelSaveBtn.classList.remove('saved');
-        modelHint.textContent = 'Used for all new conversations and eval runs.';
-      }, 2200);
-    });
-
-    modelInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') modelSaveBtn.click();
-    });
   }
 
   /* ── Modal ──────────────────────────────────────────── */
