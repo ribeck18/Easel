@@ -29,6 +29,7 @@ STATIC_DIR = TEMPLATES_DIR / "static"
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     create_database()
+    ProviderStore.migrate_legacy_env()
     if ProviderStore.get_active() is not None:
         ClientModel.set_client()
     if not scheduler.running:

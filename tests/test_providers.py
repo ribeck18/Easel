@@ -19,8 +19,18 @@ def store(tmp_path, monkeypatch):
     monkeypatch.setattr(providers_mod, "ROOT", tmp_path)
     monkeypatch.setattr(providers_mod, "PROVIDERS_PATH", tmp_path / "providers.json")
     monkeypatch.setattr(providers_mod, "ENV_PATH", tmp_path / ".env")
+    # ClientModel reads its own module-level ROOT for the legacy key list; point it at
+    # the same temp dir so get_key_names() sees the same .env as the Provider store.
+    monkeypatch.setattr(sys.modules["ClientModel"], "ROOT", tmp_path)
     ClientModel.client = None
     return tmp_path
+
+
+def _write_legacy_env(store_dir, **vars):
+    """Write the given key=value pairs into the temp .env."""
+    (store_dir / ".env").write_text(
+        "".join(f'{k}="{v}"\n' for k, v in vars.items()), encoding="utf-8"
+    )
 
 
 def test_add_provider_roundtrip(store):
@@ -109,3 +119,71 @@ def test_set_active_unknown_id_raises(store):
     ProviderStore.add_provider("A", "https://a/v1", "m", api_key="k")
     with pytest.raises(ValueError):
         ProviderStore.set_active("does-not-exist")
+
+
+# ── Legacy migration (issue #5) ──────────────────────────────────────────────
+
+
+def test_migrates_legacy_env(store):
+    _write_legacy_env(store, OPENROUTER_API_KEY="sk-old", MODEL="openai/gpt-4o")
+    assert not (store / "providers.json").exists()
+
+    assert ProviderStore.migrate_legacy_env() is True
+
+    active = ProviderStore.get_active()
+    assert active["label"] == "OpenRouter"
+    assert active["base_url"] == "https://openrouter.ai/api/v1"
+    assert active["model"] == "openai/gpt-4o"
+    # Points at the existing env var; the secret is not duplicated.
+    assert active["api_key_env"] == "OPENROUTER_API_KEY"
+    assert ProviderStore.get_active_api_key() == "sk-old"
+
+    # The migrated install boots into a working client.
+    ClientModel.set_client()
+    assert ClientModel.get_model() == "openai/gpt-4o"
+    assert str(ClientModel.get_client().base_url).rstrip("/") == (
+        "https://openrouter.ai/api/v1"
+    )
+
+
+def test_migration_is_additive_and_hides_key_from_legacy_list(store):
+    _write_legacy_env(store, OPENROUTER_API_KEY="sk-old", MODEL="m")
+    ProviderStore.migrate_legacy_env()
+
+    # .env is untouched: the key still lives there...
+    assert dotenv_values(store / ".env")["OPENROUTER_API_KEY"] == "sk-old"
+    # ...but it is now owned by a Provider, so it drops out of the legacy key list.
+    assert "OPENROUTER_API_KEY" not in ClientModel.get_key_names()
+
+
+def test_migration_noop_when_providers_exist(store):
+    pid = ProviderStore.add_provider("Existing", "https://x/v1", "mx", api_key="kx")
+    _write_legacy_env(store, OPENROUTER_API_KEY="sk-old", MODEL="m")
+
+    assert ProviderStore.migrate_legacy_env() is False
+    # The existing store is not clobbered.
+    assert ProviderStore.get_active()["id"] == pid
+    assert len(ProviderStore.list_providers()) == 1
+
+
+def test_migration_noop_on_fresh_install(store):
+    assert ProviderStore.migrate_legacy_env() is False
+    assert ProviderStore.get_active() is None
+    assert ProviderStore.list_providers() == []
+
+
+def test_migration_requires_both_key_and_model(store):
+    _write_legacy_env(store, OPENROUTER_API_KEY="sk-old")  # no MODEL
+    assert ProviderStore.migrate_legacy_env() is False
+    assert ProviderStore.get_active() is None
+
+    _write_legacy_env(store, MODEL="m")  # key only / now no key
+    assert ProviderStore.migrate_legacy_env() is False
+    assert ProviderStore.get_active() is None
+
+
+def test_migration_is_idempotent(store):
+    _write_legacy_env(store, OPENROUTER_API_KEY="sk-old", MODEL="m")
+    assert ProviderStore.migrate_legacy_env() is True
+    assert ProviderStore.migrate_legacy_env() is False
+    assert len(ProviderStore.list_providers()) == 1

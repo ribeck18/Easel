@@ -70,11 +70,13 @@ class ClientModel:
         env_path: Path = Path(ROOT / ".env")
         if not env_path.exists():
             return []
+        owned = ProviderStore.key_env_names()
         return [
             k
             for k in dotenv_values(env_path).keys()
             if k.upper() not in ClientModel._NON_KEY_ENV
             and not k.startswith(KEY_ENV_PREFIX)
+            and k not in owned
         ]
 
     @staticmethod

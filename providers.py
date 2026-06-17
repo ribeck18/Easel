@@ -131,3 +131,49 @@ class ProviderStore:
             raise ValueError(f"No Provider with id {provider_id!r}.")
         data["active_id"] = provider_id
         ProviderStore._write(data)
+
+    @staticmethod
+    def key_env_names() -> set[str]:
+        """Return every ``.env`` var name owned by a stored Provider (its api_key_env)."""
+        return {
+            p["api_key_env"]
+            for p in ProviderStore._read()["providers"]
+            if p.get("api_key_env")
+        }
+
+    @staticmethod
+    def migrate_legacy_env() -> bool:
+        """One-shot upgrade of a pre-Provider install to an active OpenRouter Provider.
+
+        Before Providers existed the app talked to OpenRouter via a hardcoded base_url
+        plus ``OPENROUTER_API_KEY`` + ``MODEL`` in ``.env``. On first launch after the
+        Provider feature ships, synthesize an active OpenRouter Provider from that config
+        so the upgrade is seamless.
+
+        Purely additive: the record points ``api_key_env`` at the existing
+        ``OPENROUTER_API_KEY`` var and ``.env`` is never modified. Guarded by the
+        existence of ``providers.json`` so it runs at most once and never clobbers an
+        already-configured store.
+
+        Returns ``True`` if a Provider was created, ``False`` otherwise (already
+        migrated, or nothing to migrate).
+        """
+        if PROVIDERS_PATH.exists():
+            return False
+
+        env = dotenv_values(ENV_PATH)
+        api_key = env.get("OPENROUTER_API_KEY")
+        model = env.get("MODEL")
+        if not api_key or not model:
+            return False
+
+        provider_id = uuid.uuid4().hex
+        record = {
+            "id": provider_id,
+            "label": "OpenRouter",
+            "base_url": "https://openrouter.ai/api/v1",
+            "model": model,
+            "api_key_env": "OPENROUTER_API_KEY",
+        }
+        ProviderStore._write({"active_id": provider_id, "providers": [record]})
+        return True
